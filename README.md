@@ -57,6 +57,25 @@ A critical challenge was the precision loss between C++ (`double`) and Kaggle’
 
 ## 🚀 Getting Started
 
-1. **Compile the Solver:**
-   ```bash
-   g++ -O3 src/cpp/optimizer_exploration.cpp -o solver
+To run the optimization engine, ensure you have the required dependencies and follow these steps:
+
+### 1. Prerequisites
+- **Python 3.8+**: The orchestrator requires `pandas`, `numpy`, `numba`, and `shapely` libraries.
+- **C++ Compiler**: A modern compiler (GCC/G++ recommended) is needed to build the solver cores.
+- **Initial Data**: A valid `submission.csv` file must be present in the root directory, as the orchestrator reads existing configurations to refine them.
+
+### 2. Compilation
+The Python orchestrator communicates with the C++ core via `subprocess`. You must compile the desired C++ module into an executable named `mysolver` (the default name expected by the script):
+
+```bash
+# Example: Compiling the exploration engine
+g++ -O3 src/cpp/optimizer_exploration.cpp -o mysolver
+```
+### 3. Execution
+The orchestrator will randomly select problem groups (1-200 trees), execute the C++ solver with varying seeds, and validate the results using STRtree Spatial Indexing.
+
+```bash
+# Start the hybrid optimization loop
+python src/python/orchestrator.py
+```
+Note: The script will automatically update submission.csv whenever a better non-overlapping score is found during the validation phase.
