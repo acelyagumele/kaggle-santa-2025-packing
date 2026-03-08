@@ -1,45 +1,62 @@
-🎄 Kaggle Santa 2025: Hybrid Geometry Optimization Engine
-📌 Project Overview
-This repository contains a high-performance hybrid optimization engine developed for the Kaggle Santa 2025 challenge. The project addresses a complex NP-Hard 2D Bin Packing problem: placing between 1 and 200 intricate Christmas tree polygons into the smallest possible square bounding box without any overlaps.
+# 🎄 Kaggle Santa 2025: Hybrid Geometry Optimization Engine
 
-Achievement: Ranked in the Top 14% globally among 3,395 competing teams.
+[![Kaggle Rank](https://img.shields.io/badge/Kaggle-Top%2014%25-gold?style=for-the-badge)](https://www.kaggle.com/competitions/santa-2025)
+[![Tech Stack](https://img.shields.io/badge/Tech-C%2B%2B%20%7C%20Python%20%7C%20Shapely-blue?style=for-the-badge)](https://github.com/yourusername/kaggle-santa-2025-packing)
 
-🏗 System Architecture
-The system utilizes a Two-Tier Architecture to bridge the gap between raw computational speed and absolute geometric validation:
+---
 
-C++ High-Performance Solver (The Worker): \* A custom Computational Geometry engine built from scratch (using cross-product and ray-casting) to handle million-scale collision tests per second.
+## 📌 Project Overview
+This repository contains a high-performance hybrid optimization engine developed for the **Kaggle Santa 2025** challenge. The project addresses a complex **NP-Hard 2D Bin Packing** problem: placing between 1 and 200 intricate Christmas tree polygons into the smallest possible square bounding box without any overlaps.
 
-Implements multiple heuristic search strategies to navigate the complex solution space.
+> **Achievement:** Ranked in the **Top 14%** globally among 3,395 competing teams.
 
-Python Orchestration & Fail-Safe Layer (The Arbiter): \* Manages the execution pipeline and automates hyperparameter tuning via subprocess.
+---
 
-Utilizes STRtree (Spatial Indexing) and Shapely for a rigorous final validation, ensuring submissions are 100% free of overlap errors.
+## 🏗 System Architecture
+The system utilizes a **Two-Tier Architecture** to bridge the gap between raw computational speed and absolute geometric validation:
 
-🔧 Engineering Challenges & Solutions
+### ⚙️ C++ High-Performance Solver (The Worker)
+* **Custom Engine:** A computational geometry engine built from scratch (using cross-product and ray-casting) to handle million-scale collision tests per second.
+* **Heuristic Search:** Implements multiple strategies to navigate the complex solution space, including Simulated Annealing and Differential Evolution.
 
-1. Overcoming Floating-Point Precision Loss
-   A critical challenge was the precision loss between C++ (double) and Kaggle’s evaluation servers, where mikroscopic gaps in memory could be interpreted as overlaps during file I/O.
+### 🐍 Python Orchestration & Fail-Safe (The Arbiter)
+* **Execution Pipeline:** Manages the pipeline and automates hyperparameter tuning via `subprocess`.
+* **Validation:** Utilizes **STRtree (Spatial Indexing)** and `Shapely` for a rigorous final validation, ensuring submissions are 100% free of overlap errors.
 
-Solution: Implemented a Local Kaggle Evaluator Simulator in Python. Outputs are parsed as arbitrary-precision Decimal objects (25-digit precision) and scaled by 1e18 before validation.
 
-C++ Side: Armed the collision detection engine with a strict 1e-11 safety tolerance to ensure results are "stricter" than the evaluation metric.
 
-2. Escaping Local Minima
-   Standard Simulated Annealing often stalled in suboptimal configurations. Multiple heuristics were developed to overcome this:
+---
 
-Earthquake Heuristic: Temporarily increasing thermodynamic temperature to "shake" the system and explore new formations.
+## 🔧 Engineering Challenges & Solutions
 
-Dynamic Gravity: Phased logic that pushes polygons towards the South-West corner to compact them, followed by a center-gravity phase for final refinement.
+### 1. Overcoming Floating-Point Precision Loss
+A critical challenge was the precision loss between C++ (`double`) and Kaggle’s evaluation servers, where microscopic gaps in memory could be interpreted as overlaps during file I/O.
 
-📂 Project Structure
-C++ Optimization Modules (src/cpp/)
-optimizer_exploration.cpp: Aggressive Simulated Annealing core designed to break local minima using high-temperature "shake" phases.
+* **Solution:** Implemented a **Local Kaggle Evaluator Simulator** in Python. 
+* **Precision:** Outputs are parsed as arbitrary-precision **Decimal** objects (25-digit precision) and scaled by $10^{18}$ before validation.
+* **Safety:** The C++ engine uses a strict $1e^{-11}$ safety tolerance to ensure results are "stricter" than the evaluation metric.
 
-optimizer_lns.cpp: Advanced Large Neighborhood Search module that identifies "culprit" polygons causing score bottlenecks and applies localized Ruin-and-Recreate heuristics.
+### 2. Escaping Local Minima
+* **Earthquake Heuristic:** Aggressive "shake" phases using high-temperature Simulated Annealing to break local minima.
+* **Dynamic Gravity:** A phased strategy that pushes polygons towards a corner to compact them, followed by a center-gravity phase.
+* **LNS Strategy:** Identifying bottleneck "culprit" polygons and applying localized **Ruin-and-Recreate** tactics.
 
-optimizer_finetune.cpp: A hybrid core combining Simulated Annealing with Differential Evolution (Mini-DE) for population-based local search.
+---
 
-optimizer_microsteps.cpp: Precision-focused solver using ultra-small step sizes (0.0001) and center-gravity for final millimeter-level compaction.
+## 📂 Project Structure
 
-Python Layer (src/python/)
-orchestrator.py: The main manager that accelerates geometry templates with Numba (JIT) and performs fail-safe validation using STRtree Spatial Indexing.
+| File | Description |
+| :--- | :--- |
+| `optimizer_exploration.cpp` | Aggressive SA core for breaking local minima. |
+| `optimizer_lns.cpp` | **Large Neighborhood Search** for bottleneck-focused optimization. |
+| `optimizer_finetune.cpp` | Hybrid core with **Differential Evolution (Mini-DE)**. |
+| `optimizer_microsteps.cpp` | Precision-focused solver using ultra-small step sizes. |
+| `orchestrator.py` | Python manager with **Numba (JIT)** and **STRtree** validation. |
+
+---
+
+## 🚀 Getting Started
+
+1. **Compile the Solver:**
+   ```bash
+   g++ -O3 src/cpp/optimizer_exploration.cpp -o solver
