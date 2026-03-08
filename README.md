@@ -3,6 +3,15 @@
 [![Kaggle Rank](https://img.shields.io/badge/Kaggle-Top%2014%25-gold?style=for-the-badge)](https://www.kaggle.com/competitions/santa-2025)
 [![Tech Stack](https://img.shields.io/badge/Tech-C%2B%2B%20%7C%20Python%20%7C%20Shapely-blue?style=for-the-badge)](https://github.com/yourusername/kaggle-santa-2025-packing)
 
+<div align="center">
+  <h3>🏆 Packing Result (Group </h3>
+  <img src="packing_result.png" alt="Optimization Result (Group 195)" width="800"/>
+  <br><br>
+  <a href="https://youtube.com/shorts/sIQvgCirOdE?feature=share" target="_blank">
+    <img src="https://img.shields.io/badge/YouTube-Watch%20Timelapse%20Video-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch on YouTube"/>
+  </a>
+</div>
+
 ---
 
 ## 📌 Project Overview
