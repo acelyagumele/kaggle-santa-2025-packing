@@ -5,7 +5,7 @@
 
 <div>
   <a href="https://youtube.com/shorts/sIQvgCirOdE?feature=share" target="_blank">
-    <img src="https://img.shields.io/badge/YouTube-Watch%20Timelapse%20Video-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch on YouTube"/>
+    <img src="https://img.shields.io/badge/YouTube-Watch%20Full%20Solution-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch on YouTube"/>
   </a>
 </div>
 
