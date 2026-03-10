@@ -9,65 +9,70 @@
 #include <iomanip>
 #include <set>
 
-using namespace std;
+constexpr double PI = 3.14159265358979323846;
+constexpr double COLLISION_TOLERANCE = 1e-11;
 
-const double PI = 3.14159265358979323846;
-
-// --- GEOMETRIC STRUCTURES ---
+// GEOMETRIC STRUCTURES
 struct Point { double x, y; };
 
 struct Tree {
-    string original_id;
+    std::string original_id;
     int group_id;
     double x, y, deg;
-    vector<Point> polygon;
-    bool locked = false; // LNS: Eğer true ise bu ağaç hareket etmez
+    std::vector<Point> polygon;
+    bool locked = false; // LNS mechanism: True means this tree acts as a static obstacle
 
-    void update_polygon(const vector<Point>& template_poly) {
-        polygon.clear();
+    // Memory reuse optimization for high-frequency mutation calls
+    void update_polygon(const std::vector<Point>& template_poly) {
+        if (polygon.size() != template_poly.size()) {
+            polygon.resize(template_poly.size());
+        }
         double rad = deg * PI / 180.0;
-        double c = cos(rad);
-        double s = sin(rad);
+        double c = std::cos(rad);
+        double s = std::sin(rad);
 
-        for (const auto& p : template_poly) {
-            double nx = (p.x * c - p.y * s) + x;
-            double ny = (p.x * s + p.y * c) + y;
-            polygon.push_back({nx, ny});
+        for (size_t i = 0; i < template_poly.size(); ++i) {
+            polygon[i].x = (template_poly[i].x * c - template_poly[i].y * s) + x;
+            polygon[i].y = (template_poly[i].x * s + template_poly[i].y * c) + y;
         }
     }
 };
 
-// --- HELPER FUNCTIONS ---
-vector<Point> get_tree_template() {
-    double tw=0.15, th=0.2, bw=0.7, mw=0.4, ow=0.25;
-    double tip=0.8, t1=0.5, t2=0.25, base=0.0, tbot=-th;
-    vector<double> x = {0, ow/2, ow/4, mw/2, mw/4, bw/2, tw/2, tw/2, -tw/2, -tw/2, -bw/2, -mw/4, -mw/2, -ow/4, -ow/2};
-    vector<double> y = {tip, t1, t1, t2, t2, base, base, tbot, tbot, base, base, t2, t2, t1, t1};
-    vector<Point> pts;
+// HELPER FUNCTIONS
+std::vector<Point> get_tree_template() {
+    constexpr double tw=0.15, th=0.2, bw=0.7, mw=0.4, ow=0.25;
+    constexpr double tip=0.8, t1=0.5, t2=0.25, base=0.0, tbot=-th;
+    std::vector<double> x = {0, ow/2, ow/4, mw/2, mw/4, bw/2, tw/2, tw/2, -tw/2, -tw/2, -bw/2, -mw/4, -mw/2, -ow/4, -ow/2};
+    std::vector<double> y = {tip, t1, t1, t2, t2, base, base, tbot, tbot, base, base, t2, t2, t1, t1};
+    std::vector<Point> pts;
+    pts.reserve(x.size());
     for(size_t i=0; i<x.size(); ++i) pts.push_back({x[i], y[i]});
     return pts;
 }
 
-double parse_val(string s) {
-    if (s.size() > 0 && s[0] == 's') return stod(s.substr(1));
-    return stod(s);
+double parse_val(const std::string& s) {
+    if (!s.empty() && s[0] == 's') return std::stod(s.substr(1));
+    return std::stod(s);
 }
 
-int get_group_id(const string& id) {
+int get_group_id(const std::string& id) {
     size_t pos = id.find('_');
-    if (pos != string::npos) return stoi(id.substr(0, pos));
+    if (pos != std::string::npos) return std::stoi(id.substr(0, pos));
     return 0;
 }
 
-// --- COLLISION CHECKS ---
-bool onSegment(Point p, Point a, Point b) {
-    return p.x <= max(a.x, b.x) && p.x >= min(a.x, b.x) && p.y <= max(a.y, b.y) && p.y >= min(a.y, b.y);
+// COLLISION CHECKS (FAIL-SAFE) 
+inline bool onSegment(Point p, Point a, Point b) {
+    return p.x <= std::max(a.x, b.x) && p.x >= std::min(a.x, b.x) && 
+           p.y <= std::max(a.y, b.y) && p.y >= std::min(a.y, b.y);
 }
-int orientation(Point p, Point q, Point r) {
+
+inline int orientation(Point p, Point q, Point r) {
     double val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
-    if (abs(val) < 1e-9) return 0;
+    if (std::abs(val) < 1e-9) return 0;
     return (val > 0) ? 1 : 2;
 }
+
 bool segmentsIntersect(Point p1, Point q1, Point p2, Point q2) {
     int o1 = orientation(p1, q1, p2); int o2 = orientation(p1, q1, q2);
     int o3 = orientation(p2, q2, p1); int o4 = orientation(p2, q2, q1);
@@ -78,7 +83,8 @@ bool segmentsIntersect(Point p1, Point q1, Point p2, Point q2) {
     if (o4 == 0 && onSegment(q1, p2, q2)) return true;
     return false;
 }
-bool isInside(const vector<Point>& poly, Point p) {
+
+bool isInside(const std::vector<Point>& poly, Point p) {
     int n = poly.size();
     if (n < 3) return false;
     Point extreme = {1e10, p.y};
@@ -96,17 +102,17 @@ bool isInside(const vector<Point>& poly, Point p) {
 
 bool check_overlap(const Tree& t1, const Tree& t2) {
     double minX1=1e10, maxX1=-1e10, minY1=1e10, maxY1=-1e10;
-    for(auto& p : t1.polygon) { minX1=min(minX1, p.x); maxX1=max(maxX1, p.x); minY1=min(minY1, p.y); maxY1=max(maxY1, p.y); }
+    for(const auto& p : t1.polygon) { minX1=std::min(minX1, p.x); maxX1=std::max(maxX1, p.x); minY1=std::min(minY1, p.y); maxY1=std::max(maxY1, p.y); }
     double minX2=1e10, maxX2=-1e10, minY2=1e10, maxY2=-1e10;
-    for(auto& p : t2.polygon) { minX2=min(minX2, p.x); maxX2=max(maxX2, p.x); minY2=min(minY2, p.y); maxY2=max(maxY2, p.y); }
+    for(const auto& p : t2.polygon) { minX2=std::min(minX2, p.x); maxX2=std::max(maxX2, p.x); minY2=std::min(minY2, p.y); maxY2=std::max(maxY2, p.y); }
 
-    double tolerance = 1e-10; // Biraz daha gevşek tolerans
-    if (maxX1 < minX2 - tolerance || maxX2 < minX1 - tolerance ||
-        maxY1 < minY2 - tolerance || maxY2 < minY1 - tolerance) return false;
+    if (maxX1 < minX2 - COLLISION_TOLERANCE || maxX2 < minX1 - COLLISION_TOLERANCE ||
+        maxY1 < minY2 - COLLISION_TOLERANCE || maxY2 < minY1 - COLLISION_TOLERANCE) return false;
 
     for (size_t i = 0; i < t1.polygon.size(); i++) {
         for (size_t j = 0; j < t2.polygon.size(); j++) {
-            if (segmentsIntersect(t1.polygon[i], t1.polygon[(i+1)%t1.polygon.size()], t2.polygon[j], t2.polygon[(j+1)%t2.polygon.size()])) return true;
+            if (segmentsIntersect(t1.polygon[i], t1.polygon[(i+1)%t1.polygon.size()], 
+                                  t2.polygon[j], t2.polygon[(j+1)%t2.polygon.size()])) return true;
         }
     }
     if (isInside(t2.polygon, t1.polygon[0])) return true;
@@ -114,9 +120,10 @@ bool check_overlap(const Tree& t1, const Tree& t2) {
     return false;
 }
 
-// --- LNS HELPERS ---
-// Hangi ağaçlar sınırları belirliyor ve onlara yakın olanlar hangileri?
-vector<int> get_critical_indices(const vector<Tree*>& trees, double radius_multiplier = 1.5) {
+// --- LNS (LARGE NEIGHBORHOOD SEARCH) BOTTLENECK DETECTOR ---
+// I implemented this function to autonomously detect the "culprit" polygons that dictate 
+// the bounding box limits, and mark them (along with their neighbors) for localized destruction.
+std::vector<int> get_critical_indices(const std::vector<Tree*>& trees, double radius_multiplier = 1.5) {
     double min_x = 1e300, min_y = 1e300, max_x = -1e300, max_y = -1e300;
     for (const auto* t : trees) {
         for (const auto& p : t->polygon) {
@@ -128,22 +135,21 @@ vector<int> get_critical_indices(const vector<Tree*>& trees, double radius_multi
     double width = max_x - min_x;
     double height = max_y - min_y;
 
-    // Problemli kenarı bul (Kareyi bozan taraf)
+    // Determine the problematic edge that prevents the bounding box from shrinking
     bool fix_width = width > height;
 
-    set<int> critical_set;
-    vector<int> result;
+    std::set<int> critical_set;
+    std::vector<int> result;
 
-    // Sınıra çok yakın ağaçları bul (Critical Trees)
-    double threshold = 0.5; // Sınıra ne kadar yakınsa "suçlu" sayılır
-    vector<Point> trouble_centers;
+    constexpr double threshold = 0.5; // Proximity threshold to be considered a bottleneck
+    std::vector<Point> trouble_centers;
 
-    for (int i=0; i<trees.size(); i++) {
+    for (size_t i=0; i<trees.size(); i++) {
         bool is_culprit = false;
         double t_min_x = 1e300, t_max_x = -1e300, t_min_y = 1e300, t_max_y = -1e300;
-        for(auto& p : trees[i]->polygon) {
-            t_min_x = min(t_min_x, p.x); t_max_x = max(t_max_x, p.x);
-            t_min_y = min(t_min_y, p.y); t_max_y = max(t_max_y, p.y);
+        for(const auto& p : trees[i]->polygon) {
+            t_min_x = std::min(t_min_x, p.x); t_max_x = std::max(t_max_x, p.x);
+            t_min_y = std::min(t_min_y, p.y); t_max_y = std::max(t_max_y, p.y);
         }
 
         if (fix_width) {
@@ -158,14 +164,12 @@ vector<int> get_critical_indices(const vector<Tree*>& trees, double radius_multi
         }
     }
 
-    // Neighbors: Suçlu ağaçlara yakın olanları da ekle (Domino etkisi için)
-    // Yarıçapı biraz büyük tutuyoruz ki hareket alanı açılsın
+    // Domino Effect: Also include neighbors of the culprits to create enough empty space for re-packing
     double search_radius = 4.0 * radius_multiplier;
-
-    for (int i=0; i<trees.size(); i++) {
+    for (size_t i=0; i<trees.size(); i++) {
         if (critical_set.count(i)) continue;
-        for (auto& center : trouble_centers) {
-            double dist = sqrt(pow(trees[i]->x - center.x, 2) + pow(trees[i]->y - center.y, 2));
+        for (const auto& center : trouble_centers) {
+            double dist = std::sqrt(std::pow(trees[i]->x - center.x, 2) + std::pow(trees[i]->y - center.y, 2));
             if (dist < search_radius) {
                 critical_set.insert(i);
                 break;
@@ -177,7 +181,7 @@ vector<int> get_critical_indices(const vector<Tree*>& trees, double radius_multi
     return result;
 }
 
-double calculate_group_score(const vector<Tree*>& group_trees) {
+double calculate_group_score(const std::vector<Tree*>& group_trees) {
     double min_x = 1e300, min_y = 1e300, max_x = -1e300, max_y = -1e300;
     for (const auto* t : group_trees) {
         for (const auto& p : t->polygon) {
@@ -185,39 +189,44 @@ double calculate_group_score(const vector<Tree*>& group_trees) {
             if (p.y < min_y) min_y = p.y; if (p.y > max_y) max_y = p.y;
         }
     }
-    double side = max(max_x - min_x, max_y - min_y);
+    double side = std::max(max_x - min_x, max_y - min_y);
     return side * side;
 }
 
+// MAIN OPTIMIZATION LOOP
 int main(int argc, char* argv[]) {
     int target_n = 0;
     int seed = 42;
     int iterations = 200000;
-    string output_file = "partial_out.csv";
+    std::string output_file = "partial_out.csv";
 
     for(int i=1; i<argc; i++) {
-        string arg = argv[i];
-        if(arg == "-n" && i+1 < argc) target_n = stoi(argv[i+1]);
-        if(arg == "-r" && i+1 < argc) seed = stoi(argv[i+1]);
+        std::string arg = argv[i];
+        if(arg == "-n" && i+1 < argc) target_n = std::stoi(argv[i+1]);
+        if(arg == "-r" && i+1 < argc) seed = std::stoi(argv[i+1]);
         if(arg == "-o" && i+1 < argc) output_file = argv[i+1];
-        if(arg == "-i" && i+1 < argc) iterations = stoi(argv[i+1]);
+        if(arg == "-i" && i+1 < argc) iterations = std::stoi(argv[i+1]);
     }
 
-    srand(seed);
-    vector<Point> template_poly = get_tree_template();
+    std::mt19937 rng(seed);
+    std::uniform_real_distribution<double> dist_01(0.0, 1.0);
+    std::uniform_real_distribution<double> dist_sym(-0.5, 0.5);
+    std::uniform_real_distribution<double> dist_deg(0.0, 360.0);
 
-    ifstream file("submission.csv");
+    std::vector<Point> template_poly = get_tree_template();
+
+    std::ifstream file("submission.csv");
     if (!file.is_open()) return 1;
 
-    string line;
-    vector<Tree> all_trees;
-    if (getline(file, line)) {}
+    std::string line;
+    std::vector<Tree> all_trees;
+    if (std::getline(file, line)) {}
 
-    while (getline(file, line)) {
-        stringstream ss(line);
-        string val;
-        vector<string> cols;
-        while (getline(ss, val, ',')) cols.push_back(val);
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        std::string val;
+        std::vector<std::string> cols;
+        while (std::getline(ss, val, ',')) cols.push_back(val);
         if (cols.size() < 4) continue;
 
         Tree t;
@@ -231,72 +240,72 @@ int main(int argc, char* argv[]) {
     }
     file.close();
 
-    vector<Tree*> active_group;
-    for(int i=0; i<all_trees.size(); i++) {
-        if (all_trees[i].group_id == target_n) {
-            active_group.push_back(&all_trees[i]);
-        }
+    std::vector<Tree*> active_group;
+    for(auto& t : all_trees) {
+        if (t.group_id == target_n) active_group.push_back(&t);
     }
 
     if (!active_group.empty()) {
         double current_score = calculate_group_score(active_group);
-        vector<Tree> best_group_state;
+        std::vector<Tree> best_group_state;
+        best_group_state.reserve(active_group.size());
         for(Tree* t : active_group) best_group_state.push_back(*t);
         double global_best_score = current_score;
 
-        // --- LNS INITIALIZATION ---
-        // 1. Sadece kritik ağaçları seç
-        vector<int> mutable_indices = get_critical_indices(active_group);
+        // LNS INITIALIZATION  
+        // 1. Identify critical structural elements preventing optimization
+        std::vector<int> mutable_indices = get_critical_indices(active_group);
 
-        // Eğer çok az ağaç seçildiyse (nadiren olur), rastgele %20 ekle
+        // Fallback: If too few trees are selected, randomly inject entropy (10-20% mutation rate)
         if (mutable_indices.size() < active_group.size() * 0.1) {
+            std::uniform_int_distribution<int> tree_dist(0, active_group.size() - 1);
             int to_add = active_group.size() * 0.2;
-            for(int i=0; i<to_add; i++) mutable_indices.push_back(rand() % active_group.size());
+            for(int i=0; i<to_add; i++) mutable_indices.push_back(tree_dist(rng));
         }
 
-        // 2. Diğerlerini kilitle (Locked)
+        // 2. Lock the well-placed structures to preserve known good patterns
         for(auto* t : active_group) t->locked = true;
         for(int idx : mutable_indices) active_group[idx]->locked = false;
 
-        // 3. YIKIM (Destruction) - Seçilenleri sars
-        // Bu ağaçları hafifçe dışarı/boşluğa atıyoruz ki tekrar yerleşsinler
+        // 3. RUIN Phase: Aggressively displace the selected bottleneck elements
         for(int idx : mutable_indices) {
-            active_group[idx]->x += (rand()/(double)RAND_MAX - 0.5) * 1.0;
-            active_group[idx]->y += (rand()/(double)RAND_MAX - 0.5) * 1.0;
-            active_group[idx]->deg = rand() % 360; // Açıyı sıfırla/karıştır
+            active_group[idx]->x += dist_sym(rng) * 1.0;
+            active_group[idx]->y += dist_sym(rng) * 1.0;
+            active_group[idx]->deg = dist_deg(rng); // Randomize orientation completely
             active_group[idx]->update_polygon(template_poly);
         }
 
-        // --- SIMULATED ANNEALING ---
+        // RECREATE PHASE (Simulated Annealing on mutable trees) 
         double temp = 1.5;
-        double cooling_rate = 0.99995;
-        double gravity_strength = 0.002; // LNS'de daha güçlü gravity lazım
+        constexpr double cooling_rate = 0.99995;
+        constexpr double gravity_strength = 0.002; // Stronger center-gravity to force re-packing
+
+        std::uniform_int_distribution<int> mutable_dist(0, mutable_indices.size() - 1);
+        std::uniform_int_distribution<int> move_dist(0, 2);
 
         for (int k = 0; k < iterations; k++) {
-            // Sadece mutable (kilitli olmayan) ağaçlardan seç
-            int rand_idx = rand() % mutable_indices.size();
+            // Only manipulate the unlocked (ruined) trees
+            int rand_idx = mutable_dist(rng);
             Tree* t = active_group[mutable_indices[rand_idx]];
             Tree backup = *t;
 
             double step = 0.0001 + (temp * 0.01);
-            int move_type = rand() % 3;
+            int move_type = move_dist(rng);
 
-            // GRAVITY: Merkeze çek (Sadece hareketli olanları)
+            // GRAVITY: Pull aggressively towards the center to fill the gaps
             double pull_x = -1.0 * t->x * gravity_strength;
             double pull_y = -1.0 * t->y * gravity_strength;
 
-            if (move_type == 0) t->x += ((rand()/(double)RAND_MAX - 0.5) * step) + pull_x;
-            else if (move_type == 1) t->y += ((rand()/(double)RAND_MAX - 0.5) * step) + pull_y;
-            else t->deg += (rand()/(double)RAND_MAX - 0.5) * 15.0 * step;
+            if (move_type == 0) t->x += (dist_sym(rng) * step) + pull_x;
+            else if (move_type == 1) t->y += (dist_sym(rng) * step) + pull_y;
+            else t->deg += dist_sym(rng) * 15.0 * step;
 
             t->update_polygon(template_poly);
 
-            // COLLISION CHECK
+            // COLLISION CHECK against ALL trees (both locked and unlocked)
             bool overlap = false;
-            // Çarpışma kontrolü TÜM ağaçlarla yapılmalı (Sabitler dahil)
-            for (Tree* other : active_group) {
+            for (const Tree* other : active_group) {
                 if (other == t) continue;
-                // bounding box ön elemesi (hız için)
                 if (check_overlap(*t, *other)) { overlap = true; break; }
             }
 
@@ -309,14 +318,14 @@ int main(int argc, char* argv[]) {
                 if (new_score < global_best_score - 1e-9) {
                     global_best_score = new_score;
                     best_group_state.clear();
-                    for(Tree* gt : active_group) best_group_state.push_back(*gt);
+                    for(const Tree* gt : active_group) best_group_state.push_back(*gt);
                     accept = true;
                 } else if (new_score < current_score) {
                     current_score = new_score;
                     accept = true;
                 } else {
-                    double p = exp((current_score - new_score) / temp);
-                    if ((rand()/(double)RAND_MAX) < p) {
+                    double p = std::exp((current_score - new_score) / temp);
+                    if (dist_01(rng) < p) {
                         current_score = new_score;
                         accept = true;
                     }
@@ -326,16 +335,16 @@ int main(int argc, char* argv[]) {
             temp *= cooling_rate;
         }
 
-        // En iyi hali geri yükle
+        // Restore global best state
         for(size_t i=0; i<active_group.size(); i++) {
             *(active_group[i]) = best_group_state[i];
         }
     }
 
-    ofstream outfile(output_file);
-    outfile << fixed << setprecision(18);
+    std::ofstream outfile(output_file);
+    outfile << std::fixed << std::setprecision(18);
     for(const auto* t : active_group) {
-        outfile << t->original_id << ",s" << t->x << ",s" << t->y << ",s" << t->deg << endl;
+        outfile << t->original_id << ",s" << t->x << ",s" << t->y << ",s" << t->deg << "\n";
     }
     outfile.close();
 
