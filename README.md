@@ -66,7 +66,7 @@ A critical challenge was the precision loss between C++ (`double`) and Kaggle’
 To run the optimization engine, ensure you have the required dependencies and follow these steps:
 
 ### 1. Prerequisites
-- **Python 3.8+**: The orchestrator requires `pandas`, `numpy`, `numba`, and `shapely` libraries.
+- **Python 3.8+**: The orchestrator requires `pandas`, `numpy`, and `shapely` libraries.
 - **C++ Compiler**: A modern compiler (GCC/G++ recommended) is needed to build the solver cores.
 - **Initial Data**: A valid `submission.csv` file must be present in the root directory, as the orchestrator reads existing configurations to refine them.
 
